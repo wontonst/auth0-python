@@ -322,6 +322,23 @@ class TokenVerifier:
 
         return payload
 
+    def _verify_azp(
+        self,
+        payload: dict[str, Any],
+    ) -> None:
+        # Authorized party
+        if isinstance(payload["aud"], list) and len(payload["aud"]) > 1:
+            if "azp" not in payload or not isinstance(payload["azp"], str):
+                raise TokenValidationError(
+                    "Authorized Party (azp) claim must be a string present in the ID"
+                    " token when Audience (aud) claim has multiple values"
+                )
+            if payload["azp"] != self.aud:
+                raise TokenValidationError(
+                    "Authorized Party (azp) claim mismatch in the ID token; expected"
+                    ' "{}", found "{}"'.format(self.aud, payload["azp"])
+                )
+    
     def _verify_payload(
         self,
         payload: dict[str, Any],
@@ -427,18 +444,7 @@ class TokenVerifier:
                         ' "{}", found "{}"'.format(organization, payload["org_name"])
                     )
 
-        # Authorized party
-        if isinstance(payload["aud"], list) and len(payload["aud"]) > 1:
-            if "azp" not in payload or not isinstance(payload["azp"], str):
-                raise TokenValidationError(
-                    "Authorized Party (azp) claim must be a string present in the ID"
-                    " token when Audience (aud) claim has multiple values"
-                )
-            if payload["azp"] != self.aud:
-                raise TokenValidationError(
-                    "Authorized Party (azp) claim mismatch in the ID token; expected"
-                    ' "{}", found "{}"'.format(self.aud, payload["azp"])
-                )
+            self._verify_azp(payload)
 
         # Authentication time
         if max_age:
